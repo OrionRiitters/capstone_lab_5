@@ -1,10 +1,12 @@
 """
-This application queries openweathermap.org's 5-day forecast using requests and prints a table from the resulting JSON.
+This application queries openweathermap.org's 5-day forecast using requests and prints
+a table from the result.
 """
 
 import os
-import requests
 from datetime import datetime
+import requests
+
 
 
 def get_open_weather():
@@ -19,58 +21,57 @@ def get_open_weather():
 
     if response.status_code == 200:
         return response
-    else:
-        raise IOError(response.status_code)
+
+    print(f'Error: Failed GET request. Status Code {response.status_code}')
+    exit()
 
 def decode_json(response):
     try:
         data = response.json()
         return data
     except AttributeError:
-        raise AttributeError('Error: Failed parsing JSON from response object.')
+        print('Error: Failed parsing JSON from response object.')
+        exit()
 
 
-def pull_data(dict):
+def pull_data(data_chunk):
     """
     Pulls relevant data from response dictionary.
     datetime is local because weather is local.
     """
-    try:
-        utc = str(datetime.fromtimestamp(dict['dt']))
-        temp = dict['main']['temp']
-        description = dict['weather'][0]['description']
-        wind_speed = dict['wind']['speed']
-    except KeyError:
-        raise
+
+    utc = str(datetime.fromtimestamp(data_chunk['dt']))
+    temp = data_chunk['main']['temp']
+    description = data_chunk['weather'][0]['description']
+    wind_speed = data_chunk['wind']['speed']
 
     return utc, temp, description, wind_speed
+
 
 def print_data(utc, temp, description, wind_speed):
     print(f'{utc:<20} | {temp:<15} | {description:<20} | {wind_speed}')
 
 
 def iterate_data(data):
+    """
+    For chunk in data (decoded json), print row of table.
+    """
     print_data('Date/Time', 'Temperature (F)', 'Weather Description', 'Wind Speed (MPH)')
     print('-' * 75)
-    try:
-        for dict in data['list']:
-            print_data(*pull_data(dict))
-    except TypeError:
-        raise
-def main():
+    for chunk in data['list']:
+        print_data(*pull_data(chunk))
 
-    try:
-        response = get_open_weather()
-        data = decode_json(response)
-        iterate_data(data)
+
+def main():
+    """
+    Run all functions
+    """
+    response = get_open_weather()
+    data = decode_json(response)
+    iterate_data(data)
 
 # I let the python interpreter raise a KeyError from pull_data() in order to preserve
 # the stack trace.
-    except IOError as err:
-       status_code = err.args[0]
-       print(f'Error: Failed GET request. Status Code {status_code}')
-    except AttributeError as err:
-        print(err.args[0])
+
 
 main()
-
